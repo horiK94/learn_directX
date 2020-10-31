@@ -45,11 +45,12 @@ struct CUSTOMVERTEX
 {
 	D3DXVECTOR3 position; // The 3D position for the vertex
 	D3DXVECTOR3 normal;   // The surface normal for the vertex
+	DWORD diffColor;
 };
 
 // Our custom FVF, which describes our custom vertex structure
 //D3DFVF_CUSTOMVERTEX: カスタムで作成したもの. D3DFVF_XYZとD3DFVF_NORMALをor演算子でつなげたもの
-#define D3DFVF_CUSTOMVERTEX (D3DFVF_XYZ|D3DFVF_NORMAL)
+#define D3DFVF_CUSTOMVERTEX (D3DFVF_XYZ|D3DFVF_NORMAL|D3DFVF_DIFFUSE)
 
 
 
@@ -148,10 +149,14 @@ HRESULT InitGeometry()
 		FLOAT thetaPlus = (2 * D3DX_PI * (i+1)) / SURFACE_NUM;
 		pVertices[6 * i + 0].position = D3DXVECTOR3(sinf(theta), -1.0f, cosf(theta));
 		pVertices[6 * i + 0].normal = D3DXVECTOR3(sinf(theta), 0.0f, cosf(theta));
+		//DWORD は ARGB
 		pVertices[6 * i + 1].position = D3DXVECTOR3(sinf(theta), 1.0f, cosf(theta));
 		pVertices[6 * i + 1].normal = D3DXVECTOR3(sinf(theta), 0.0f, cosf(theta));
 		pVertices[6 * i + 2].position = D3DXVECTOR3(sinf(thetaPlus), 1.0f, cosf(thetaPlus));
 		pVertices[6 * i + 2].normal = D3DXVECTOR3(sinf(thetaPlus), 0.0f, cosf(thetaPlus));
+		pVertices[6 * i + 0].diffColor = 0xffff0000;
+		pVertices[6 * i + 1].diffColor = 0xffff0000;
+		pVertices[6 * i + 2].diffColor = 0xffff0000;
 
 		pVertices[6 * i + 3].position = D3DXVECTOR3(sinf(theta), -1.0f, cosf(theta));
 		pVertices[6 * i + 3].normal = D3DXVECTOR3(sinf(theta), 0.0f, cosf(theta));
@@ -159,6 +164,9 @@ HRESULT InitGeometry()
 		pVertices[6 * i + 4].normal = D3DXVECTOR3(sinf(thetaPlus), 0.0f, cosf(thetaPlus));
 		pVertices[6 * i + 5].position = D3DXVECTOR3(sinf(thetaPlus), 1.0f, cosf(thetaPlus));
 		pVertices[6 * i + 5].normal = D3DXVECTOR3(sinf(thetaPlus), 0.0f, cosf(thetaPlus));
+		pVertices[6 * i + 3].diffColor = 0xffff0000;
+		pVertices[6 * i + 4].diffColor = 0xffff0000;
+		pVertices[6 * i + 5].diffColor = 0xffff0000;
 	}
 	g_pVB->Unlock();
 
@@ -231,36 +239,84 @@ VOID SetupLights()
 {
 	// Set up a material. The material here just has the diffuse and ambient
 	// colors set to yellow. Note that only one material can be used at a time.
+	//マテリアルの設定
+	/*
+	typedef struct D3DMATERIAL9 {
+	  D3DCOLORVALUE Diffuse; →	黄色
+	  D3DCOLORVALUE Ambient; → 黄色
+	  D3DCOLORVALUE Specular;
+	  D3DCOLORVALUE Emissive;
+	  float         Power;
+	} D3DMATERIAL9, *LPD3DMATERIAL9;
+	*/
 	D3DMATERIAL9 mtrl;
 	ZeroMemory(&mtrl, sizeof(D3DMATERIAL9));
-	mtrl.Diffuse.r = mtrl.Ambient.r = 1.0f;
-	mtrl.Diffuse.g = mtrl.Ambient.g = 1.0f;
-	mtrl.Diffuse.b = mtrl.Ambient.b = 0.0f;
+	mtrl.Diffuse.r  = 0.0f;
+	mtrl.Ambient.r = 0.0f;
+	mtrl.Diffuse.g = 0.0f;
+	mtrl.Ambient.g = 1.0f;
+	mtrl.Diffuse.b =  0.0f;
+	mtrl.Ambient.b = 0.0f;
 	mtrl.Diffuse.a = mtrl.Ambient.a = 1.0f;
+	//mtrl.Power = 0.01f;
+	//全ポリゴンに設定される
+	//ポリゴンごとに色を変える場合は diffuse色が記録できる頂点バッファにする or ポリゴンを書くごとにMaterialを切り替える
 	g_pd3dDevice->SetMaterial(&mtrl);
 
 	// Set up a white, directional light, with an oscillating direction.
 	// Note that many lights may be active at a time (but each one slows down
 	// the rendering of our scene). However, here we are just using one. Also,
 	// we need to set the D3DRS_LIGHTING renderstate to enable lighting
+	//ライトの向き、色の設定
 	D3DXVECTOR3 vecDir;
 	D3DLIGHT9 light;
+	/*
+	typedef struct D3DLIGHT9 {
+	  D3DLIGHTTYPE  Type;		//光源の種類
+	  D3DCOLORVALUE Diffuse;
+	  D3DCOLORVALUE Specular;
+	  D3DCOLORVALUE Ambient;
+	  D3DVECTOR     Position;
+	  D3DVECTOR     Direction;
+	  float         Range;		//有効範囲
+		  //平行光源を選択した場合以下は無効
+	  float         Falloff;	//スポットライトの内部と外部の正面減少(基本 1)
+	  float         Attenuation0;		//減衰1
+	  float         Attenuation1;		//減衰2
+	  float         Attenuation2;		//減衰3
+	  float         Theta;		//内部コーンの角度
+	  float         Phi;		//外部コーンの角度
+	} D3DLIGHT9, *LPD3DLIGHT;
+	*/
 	ZeroMemory(&light, sizeof(D3DLIGHT9));
 	light.Type = D3DLIGHT_DIRECTIONAL;
 	light.Diffuse.r = 1.0f;
 	light.Diffuse.g = 1.0f;
 	light.Diffuse.b = 1.0f;
-	vecDir = D3DXVECTOR3(cosf(timeGetTime() / 350.0f),
+	//timeGetTime(): Windows起動時からの経過時間(ミリ秒)
+	/*vecDir = D3DXVECTOR3(cosf(timeGetTime() / 350.0f),
 		1.0f,
-		sinf(timeGetTime() / 350.0f));
+		sinf(timeGetTime() / 350.0f));*/
+	vecDir = D3DXVECTOR3(1, 0, 0);
+		/*
+	D3DXVec3Normalize(
+		D3DXVECTOR3* pOut,		//正規後のベクトルのポインタ
+		CONST D3DXVECTOR3* pV		//正規前のベクトルのポインタ
+	)
+	*/
 	D3DXVec3Normalize((D3DXVECTOR3*)&light.Direction, &vecDir);
 	light.Range = 1000.0f;
+	//0番のライトの設定
 	g_pd3dDevice->SetLight(0, &light);
+	//0番のライトを有効
 	g_pd3dDevice->LightEnable(0, TRUE);
+	//ライトのライティングを行う(デフォルトTRUEになっているようなので、書かなくても描画される)
 	g_pd3dDevice->SetRenderState(D3DRS_LIGHTING, TRUE);
 
 	// Finally, turn on some ambient light.
-	g_pd3dDevice->SetRenderState(D3DRS_AMBIENT, 0x00202020);
+	//環境光のアンビエント色の設定
+	//→ 影の部分の色
+	g_pd3dDevice->SetRenderState(D3DRS_AMBIENT, 0xff000000);
 }
 
 VOID Render_Detail()
