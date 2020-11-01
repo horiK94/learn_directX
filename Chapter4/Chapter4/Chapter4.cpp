@@ -36,6 +36,7 @@ const int SURFACE_NUM = 10;
 LPDIRECT3D9             g_pD3D = NULL; // Used to create the D3DDevice
 LPDIRECT3DDEVICE9       g_pd3dDevice = NULL; // Our rendering device
 LPDIRECT3DVERTEXBUFFER9 g_pVB = NULL; // Buffer to hold vertices
+float g_aspect = 1.0f;
 
 // A structure for our custom vertex type. We added a normal, and omitted the
 // color (which is provided by the material)
@@ -251,7 +252,7 @@ VOID SetupMatrices()
 	// what distances geometry should be no longer be rendered).
 	D3DXMATRIXA16 matProj;
 	//射影変換行列
-	D3DXMatrixPerspectiveFovLH(&matProj, D3DX_PI / 4, 1.0f, 1.0f, 100.0f);
+	D3DXMatrixPerspectiveFovLH(&matProj, D3DX_PI / 4, g_aspect, 1.0f, 100.0f);
 	g_pd3dDevice->SetTransform(D3DTS_PROJECTION, &matProj);
 }
 
@@ -420,6 +421,15 @@ LRESULT WINAPI MsgProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg)
 	{
+	case WM_SIZE:
+		//画面サイズ変更時
+		float width, height;
+		//幅: lParamの下位16bit
+		width = lParam & 0xffff;
+		//高さ: lParamの上位16bit
+		height = (lParam >> 16) & 0xffff;
+		g_aspect = width / height;
+		break;
 	case WM_DESTROY:
 		Cleanup();
 		PostQuitMessage(0);
