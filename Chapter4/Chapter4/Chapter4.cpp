@@ -200,20 +200,45 @@ VOID Cleanup()
 //-----------------------------------------------------------------------------
 VOID SetupMatrices()
 {
+	//行列を記録する構造体
+	/*
+	いずれも16個のfloatを持つ
+	D3DMATRIX: メンバを持つだけの構造体
+	D3DXMATRIX: D3DMATRIXにc++演算子がオーバーロードされて使いやすくなったもの
+	D3DXMATRIXA16: 16byteを整列させることでD3DXMATRIXよりメモリ処理の効率を上げたもの
+	*/
+
 	// Set up world matrix
+	//ワールド行列の作成
 	D3DXMATRIXA16 matWorld;
+	//単位行列に初期化
 	D3DXMatrixIdentity(&matWorld);
-	D3DXMatrixRotationX(&matWorld, timeGetTime() / 500.0f);
+	//x軸を中心に回転する変換行列
+	//D3DXMatrixRotationX(&matWorld, timeGetTime() / 500.0f);
+	//変換行列の設定
+	/*
+	D3DTS_WORLD: ワール変換行列
+	D3DTS_VIEW: ビュー変換行列
+	D3DTS_PROJECTION: プロジェクション変換行列(射影行列)
+	*/
 	g_pd3dDevice->SetTransform(D3DTS_WORLD, &matWorld);
 
 	// Set up our view matrix. A view matrix can be defined given an eye point,
 	// a point to lookat, and a direction for which way is up. Here, we set the
 	// eye five units back along the z-axis and up three units, look at the
 	// origin, and define "up" to be in the y-direction.
-	D3DXVECTOR3 vEyePt(0.0f, 3.0f, -5.0f);
+	D3DXVECTOR3 vEyePt(0.0f, 5.0f, 10.0f);
 	D3DXVECTOR3 vLookatPt(0.0f, 0.0f, 0.0f);
 	D3DXVECTOR3 vUpVec(0.0f, 1.0f, 0.0f);
 	D3DXMATRIXA16 matView;
+	/*
+	D3DXMATRIX* D3DXMatrixLookAtLH(
+	  _Inout_       D3DXMATRIX  *pOut,		//結果のポインタ
+	  _In_    const D3DXVECTOR3 *pEye,		//カメラの位置
+	  _In_    const D3DXVECTOR3 *pAt,		//注視点
+	  _In_    const D3DXVECTOR3 *pUp		//上方向を表すベクトル
+	);
+	*/
 	D3DXMatrixLookAtLH(&matView, &vEyePt, &vLookatPt, &vUpVec);
 	g_pd3dDevice->SetTransform(D3DTS_VIEW, &matView);
 
@@ -224,6 +249,7 @@ VOID SetupMatrices()
 	// the aspect ratio, and the near and far clipping planes (which define at
 	// what distances geometry should be no longer be rendered).
 	D3DXMATRIXA16 matProj;
+	//射影変換行列
 	D3DXMatrixPerspectiveFovLH(&matProj, D3DX_PI / 4, 1.0f, 1.0f, 100.0f);
 	g_pd3dDevice->SetTransform(D3DTS_PROJECTION, &matProj);
 }
@@ -253,7 +279,7 @@ VOID SetupLights()
 	ZeroMemory(&mtrl, sizeof(D3DMATERIAL9));
 	mtrl.Diffuse.r  = 0.0f;
 	mtrl.Ambient.r = 0.0f;
-	mtrl.Diffuse.g = 0.0f;
+	mtrl.Diffuse.g = 1.0f;
 	mtrl.Ambient.g = 1.0f;
 	mtrl.Diffuse.b =  0.0f;
 	mtrl.Ambient.b = 0.0f;
@@ -321,9 +347,6 @@ VOID SetupLights()
 
 VOID Render_Detail()
 {
-	// Setup the lights and materials
-	SetupLights();
-
 	// Setup the world, view, and projection matrices
 	SetupMatrices();
 
@@ -343,6 +366,14 @@ VOID Render_Detail()
 	//D3DPT_TRIANGLESTRIP: 連続した三角形としてレンダリング（トライアングルストリップという方法: ポリゴンの辺が共有されているときに、再利用してポリゴンを連続描画する方法）
 	//UINT StartVertex; 描画を始める頂点の番号. 先頭は0
 	//UINT PrimitiveCount: 描画する頂点の数
+	g_pd3dDevice->DrawPrimitive(D3DPT_TRIANGLELIST, 0, SURFACE_NUM * 2);
+
+	D3DXMATRIXA16 matWorld;
+	D3DXMatrixTranslation(&matWorld, -3, 0, 2);
+	g_pd3dDevice->SetTransform(D3DTS_WORLD, &matWorld);
+	g_pd3dDevice->DrawPrimitive(D3DPT_TRIANGLELIST, 0, SURFACE_NUM * 2);
+	D3DXMatrixTranslation(&matWorld, 3, 0, 2);
+	g_pd3dDevice->SetTransform(D3DTS_WORLD, &matWorld);
 	g_pd3dDevice->DrawPrimitive(D3DPT_TRIANGLELIST, 0, SURFACE_NUM * 2);
 
 }
@@ -420,6 +451,9 @@ INT WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, INT)
 		//3Dモデルの作成
 		if (SUCCEEDED(InitGeometry()))
 		{
+			// Setup the lights and materials
+			SetupLights();
+
 			// Show the window
 			ShowWindow(hWnd, SW_SHOWDEFAULT);
 			UpdateWindow(hWnd);
