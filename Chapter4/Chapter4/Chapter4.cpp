@@ -214,6 +214,7 @@ VOID SetupMatrices()
 	//単位行列に初期化
 	D3DXMatrixIdentity(&matWorld);
 	//x軸を中心に回転する変換行列
+	D3DXMatrixRotationX(&matWorld, timeGetTime() / 500.0f);
 	//D3DXMatrixRotationX(&matWorld, timeGetTime() / 500.0f);
 	//変換行列の設定
 	/*
@@ -368,11 +369,17 @@ VOID Render_Detail()
 	//UINT PrimitiveCount: 描画する頂点の数
 	g_pd3dDevice->DrawPrimitive(D3DPT_TRIANGLELIST, 0, SURFACE_NUM * 2);
 
-	D3DXMATRIXA16 matWorld;
-	D3DXMatrixTranslation(&matWorld, -3, 0, 2);
+	D3DXMATRIXA16 matWorld, transWorld, rotateWorld;
+	//設定済みのワールド変換行列 = 真ん中に置いた円柱の回転行列を取得する
+	g_pd3dDevice->GetTransform(D3DTS_WORLD, &rotateWorld);
+
+	D3DXMatrixTranslation(&transWorld, -3, 0, 2);
+	matWorld = rotateWorld * transWorld;
 	g_pd3dDevice->SetTransform(D3DTS_WORLD, &matWorld);
 	g_pd3dDevice->DrawPrimitive(D3DPT_TRIANGLELIST, 0, SURFACE_NUM * 2);
-	D3DXMatrixTranslation(&matWorld, 3, 0, 2);
+
+	D3DXMatrixTranslation(&transWorld, 3, 0, 2);
+	matWorld = rotateWorld * transWorld;
 	g_pd3dDevice->SetTransform(D3DTS_WORLD, &matWorld);
 	g_pd3dDevice->DrawPrimitive(D3DPT_TRIANGLELIST, 0, SURFACE_NUM * 2);
 
