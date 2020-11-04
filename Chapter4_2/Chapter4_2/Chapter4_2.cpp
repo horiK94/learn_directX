@@ -37,13 +37,21 @@
 LPDIRECT3D9         g_pD3D = NULL; // Used to create the D3DDevice
 LPDIRECT3DDEVICE9   g_pd3dDevice = NULL; // Our rendering device
 
+
+//tiger.xから読み取ったmeshデータはこっち
+//meshデータはID3DXMeshインターフェースのインスタンスに格納する
+//LPD3DXMESH は ID3DXMesh のポインタ (typedef struct ID3DXMesh *LPD3DXMESH;)
 LPD3DXMESH          g_pMesh = NULL; // Our mesh object in sysmem
+//materialデータはこっち (D3DMATERIAL9に格納する)
 D3DMATERIAL9* g_pMeshMaterials = NULL; // Materials for our mesh
+//tiger.bmpから読み取ったテクスチャデータはこっち
+//テクスチャはIDirect3DTexture9のインスタンスに格納. そのポインタがLPDIRECT3DTEXTURE9
 LPDIRECT3DTEXTURE9* g_pMeshTextures = NULL; // Textures for our mesh
+//マテリアルの数を指定
 DWORD               g_dwNumMaterials = 0L;   // Number of mesh materials
 
-
-
+//D3DMATERIAL9とLPDIRECT3DTEXTURE9は1つのモデルに複数設定されることがあるため、
+//ポインタにして配列で扱えるようにしている
 
 //-----------------------------------------------------------------------------
 // Name: InitD3D()
@@ -91,6 +99,8 @@ HRESULT InitD3D(HWND hWnd)
 //-----------------------------------------------------------------------------
 HRESULT InitGeometry()
 {
+    //マテリアルデータ取得用変数
+    //typedef interface ID3DXBuffer *LPD3DXBUFFER;
     LPD3DXBUFFER pD3DXMtrlBuffer;
 
     // Load the mesh from the specified file
@@ -100,6 +110,7 @@ HRESULT InitGeometry()
         &g_pMesh)))
     {
         // If model is not in current folder, try parent folder
+        //失敗したら、1つ上の階層に置いてないか確認
         if (FAILED(D3DXLoadMeshFromX(L"..\\Tiger.x", D3DXMESH_SYSTEMMEM,
             g_pd3dDevice, NULL,
             &pD3DXMtrlBuffer, NULL, &g_dwNumMaterials,
@@ -110,37 +121,63 @@ HRESULT InitGeometry()
         }
     }
 
-    // We need to extract the material properties and texture names from the 
-    // pD3DXMtrlBuffer
+    //D3DXLoadMeshFromXで読み込んだマテリアルデータはID3DXBuffer型インターフェースのインスタンスに格納される
+    //→ Meshを読み込むときに使うデータ記憶用のインターフェースなので使えない
+    //GetBufferPointerでデータ編集用アドレスを取得 → D3DXMATERIAL型のポインタに代入
+    /*
+    typedef struct _D3DXMATERIAL
+    {
+        D3DMATERIAL9  MatD3D;       //マテリアル(色情報)
+        LPSTR         pTextureFilename;     //テクスチャのファイル名
+    } D3DXMATERIAL;
+    */
     D3DXMATERIAL* d3dxMaterials = (D3DXMATERIAL*)pD3DXMtrlBuffer->GetBufferPointer();
+    //D3DXMATERIALの内容をコピーするためにD3DXMATERIALと同じ要素数のD3DXMATERIALの配列を動的確保
     g_pMeshMaterials = new D3DMATERIAL9[g_dwNumMaterials];
     if (g_pMeshMaterials == NULL)
         return E_OUTOFMEMORY;
+    //D3DXMATERIALの内容をコピーするためにD3DXMATERIALと同じ要素数のIDirect3DTexture9(LPDIRECT3DTEXTURE9)の配列を動的確保
     g_pMeshTextures = new LPDIRECT3DTEXTURE9[g_dwNumMaterials];
     if (g_pMeshTextures == NULL)
         return E_OUTOFMEMORY;
 
+    //マテリアルのコピーとテクスチャの読み込み
     for (DWORD i = 0; i < g_dwNumMaterials; i++)
     {
         // Copy the material
+        //マテリアルのコピー
         g_pMeshMaterials[i] = d3dxMaterials[i].MatD3D;
 
         // Set the ambient color for the material (D3DX does not do this)
+        //XファイルにはAmbientがないので、マテリアルtのDiffuseを使用
         g_pMeshMaterials[i].Ambient = g_pMeshMaterials[i].Diffuse;
 
+        //テクスチャの参照にNULLを代入(読み込み失敗時、マテリアルでテクスチャの指定がなかったときにNULL)
         g_pMeshTextures[i] = NULL;
-        if (d3dxMaterials[i].pTextureFilename != NULL &&
-            lstrlenA(d3dxMaterials[i].pTextureFilename) > 0)
+        if (d3dxMaterials[i].pTextureFilename != NULL &&        //ファイル名が指定されてない(ファイル名のポインタがNULLではない)
+            //lstrlenA関数は文字列の長さをバイト数で返す
+            lstrlenA(d3dxMaterials[i].pTextureFilename) > 0)        //ファイル名が1文字以上指定されている(空文字はない)
         {
             // Create the texture
+            /*
+            HRESULT D3DXCreateTextureFromFile(
+              _In_  LPDIRECT3DDEVICE9  pDevice,     //デバイスのポインタ
+              _In_  LPCTSTR            pSrcFile,        //テクスチャファイル名
+              _Out_ LPDIRECT3DTEXTURE9 *ppTexture       //読み込んだテクスチャを返すポインタ
+            );
+            */
             if (FAILED(D3DXCreateTextureFromFileA(g_pd3dDevice,
                 d3dxMaterials[i].pTextureFilename,
                 &g_pMeshTextures[i])))
             {
                 // If texture is not in current folder, try parent folder
+                //テクスチャの読み込みが失敗したときに、一つ上のフォルダ構造で読み込みを試みる
                 const CHAR* strPrefix = "..\\";
+                //ファイルパス保存用の配列を用意
                 CHAR strTexture[MAX_PATH];
+                //NULL終端文字列をコピー. strTextureにstrPrefixの文字列をコピー(つまり、strTexture = "..\\")
                 strcpy_s(strTexture, MAX_PATH, strPrefix);
+                //文字列を連結. strTextureにd3dxMaterials[i].pTextureFilenameを連結する
                 strcat_s(strTexture, MAX_PATH, d3dxMaterials[i].pTextureFilename);
                 // If texture is not in current folder, try parent folder
                 if (FAILED(D3DXCreateTextureFromFileA(g_pd3dDevice,
@@ -154,6 +191,7 @@ HRESULT InitGeometry()
     }
 
     // Done with the material buffer
+    //一時的にマテリアルの情報を入れていたバッファは不要なので解放
     pD3DXMtrlBuffer->Release();
 
     return S_OK;
@@ -166,18 +204,22 @@ HRESULT InitGeometry()
 // Name: Cleanup()
 // Desc: Releases all previously initialized objects
 //-----------------------------------------------------------------------------
+//描画終了時にメッシュやマテリアルは開放する必要がある
+//newで確保したらdeleteで解放（配列はdelete[]）
 VOID Cleanup()
 {
     if (g_pMeshMaterials != NULL)
         delete[] g_pMeshMaterials;
 
-    if (g_pMeshTextures)
+    if (g_pMeshTextures)        //テクスチャのポインタ配列のため、配列だけ削除してもテクスチャ本体は開放されない
     {
         for (DWORD i = 0; i < g_dwNumMaterials; i++)
         {
             if (g_pMeshTextures[i])
+                //Texture本体を解放する
                 g_pMeshTextures[i]->Release();
         }
+        //本体を解放したのでg_pMeshTexturesも解放する
         delete[] g_pMeshTextures;
     }
     if (g_pMesh != NULL)
@@ -242,17 +284,35 @@ VOID Render()
     if (SUCCEEDED(g_pd3dDevice->BeginScene()))
     {
         // Setup the world, view, and projection matrices
+        //変換行列の設定
         SetupMatrices();
 
         // Meshes are divided into subsets, one for each material. Render them in
         // a loop
+        //描画
         for (DWORD i = 0; i < g_dwNumMaterials; i++)
         {
             // Set the material and texture for this subset
+            //マテリアルの設定
             g_pd3dDevice->SetMaterial(&g_pMeshMaterials[i]);
+            /*
+            HRESULT SetTexture(
+              DWORD                 Stage,      //サンプラ番号(プログラマブルシェーダーやテクスチャ合成時に使用)
+              IDirect3DBaseTexture9 *pTexture       //設定するテクスチャのポインタ
+            );
+            */
+            //テクスチャの設定
             g_pd3dDevice->SetTexture(0, g_pMeshTextures[i]);
 
             // Draw the mesh subset
+            //Meshを描画
+            /*
+            ID3DXBaseMesh::DrawSubset関数
+               HRESULT DrawSubset(
+                  [in] DWORD AttribId		//サブセット番号. Mesh内ではMaterialごとにパーツ分けされている. 
+                  //その管理番号 = サブセット番号
+               );
+            */
             g_pMesh->DrawSubset(i);
         }
 
