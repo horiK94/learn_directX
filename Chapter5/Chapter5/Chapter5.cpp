@@ -1,15 +1,7 @@
-﻿#pragma comment(lib, "winmm.lib")
-#pragma comment(lib, "d3d9.lib")
-#pragma comment(lib, "d3dx9.lib")
-
-#include <Windows.h>
-#include <mmsystem.h>
-#include <d3dx9.h>
-#include <tchar.h>
-
-#include "Chapter5.h"
+﻿#include "Chapter5.h"
 
 //グローバル変数
+//他のソースコードでも使用できるようにexturnをつける
 LPDIRECT3D9 g_pD3D = NULL;
 LPDIRECT3DDEVICE9 g_pd3DDeivece = NULL;
 
@@ -80,7 +72,7 @@ HRESULT InitD3DWindow(LPCTSTR winTitle, int w, int h)
 		NULL);
 
 	//ビューポートのアスペクト比を求める
-	g_aspect = (float)w / h;
+	g_aspect = (float)w / (float)h;
 
 	//D3D9の作成
 	if (NULL == (g_pD3D = Direct3DCreate9(D3D_SDK_VERSION)))
