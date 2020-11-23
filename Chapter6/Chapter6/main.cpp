@@ -130,11 +130,13 @@ void GameMain()
 				//è¦Î‚ª‰æ–ÊŠO‚Ü‚ÅˆÚ“®‚µ‚½
 				enemys[i].isUsed = FALSE;
 			}
-			D3DXMATRIXA16 transMatrix;
-				D3DXMatrixTranslation(&backMatrix, 0.f, -1.0f, 0.0f);
-
+			D3DXMATRIXA16 transMatrix, rotateMatrix;
 			D3DXMatrixTranslation(&transMatrix, enemys[i].x, 0, enemys[i].z);
-			g_pd3DDeivece->SetTransform(D3DTS_WORLD, &transMatrix);
+			D3DXMatrixRotationY(&rotateMatrix, timeGetTime() / 1000.0f);
+
+			rotateMatrix *= transMatrix;
+			
+			g_pd3DDeivece->SetTransform(D3DTS_WORLD, &rotateMatrix);
 			RenderModel(hinsekimodel);
 		}
 	}
