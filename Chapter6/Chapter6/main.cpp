@@ -28,6 +28,7 @@ const float INSEKI_RADIUS = 1.0f;
 enum { GM_MAIN, GM_OVER };
 int gameMode = GM_MAIN;
 
+void GameMain();
 
 void SetViews()
 {
@@ -57,7 +58,9 @@ void SetViews()
 
 void GameOver()
 {
-	if(getPassedTime(1) > 5000)
+	//爆発描画のためGameMain()を呼び出す
+	GameMain();
+	if (getPassedTime(1) > 5000)
 	{
 		gameMode = GM_MAIN;
 		mx = 0;
@@ -87,7 +90,7 @@ void GameMain()
 {
 	const char* keys = GetKeyState();
 	float vectPow = 0;
-	if (keys != NULL)
+	if (keys != NULL && gameMode == GM_MAIN)
 	{
 		if (keys[DIK_UP] & 0x80)
 		{
@@ -141,13 +144,16 @@ void GameMain()
 
 	//自キャラの表示
 	//ワールド変換
-	D3DXMATRIXA16 matWorld1, matWorld2;
-	D3DXMatrixTranslation(&matWorld1, mx, 0.0f, mz);
-	D3DXMatrixRotationY(&matWorld2, r);
-	matWorld2 *= matWorld1;
+	if (gameMode == GM_MAIN)
+	{
+		D3DXMATRIXA16 matWorld1, matWorld2;
+		D3DXMatrixTranslation(&matWorld1, mx, 0.0f, mz);
+		D3DXMatrixRotationY(&matWorld2, r);
+		matWorld2 *= matWorld1;
 
-	g_pd3DDeivece->SetTransform(D3DTS_WORLD, &matWorld2);
-	RenderModel(hjikimodel);
+		g_pd3DDeivece->SetTransform(D3DTS_WORLD, &matWorld2);
+		RenderModel(hjikimodel);
+	}
 
 	//背景表示
 	D3DXMATRIXA16 backMatrix, backScaleMatrix;
@@ -180,12 +186,12 @@ void GameMain()
 			D3DXMatrixRotationY(&rotateMatrix, timeGetTime() / 1000.0f);
 
 			rotateMatrix *= transMatrix;
-			
+
 			g_pd3DDeivece->SetTransform(D3DTS_WORLD, &rotateMatrix);
 			RenderModel(hinsekimodel);
 
 			//衝突判定
-			if(pow(mx - enemys[i].x, 2) + pow(mz - enemys[i].z, 2) < INSEKI_RADIUS * INSEKI_RADIUS)
+			if (pow(mx - enemys[i].x, 2) + pow(mz - enemys[i].z, 2) < INSEKI_RADIUS * INSEKI_RADIUS && gameMode == GM_MAIN)
 			{
 				//衝突
 				//enemys[i].isUsed = FALSE;
