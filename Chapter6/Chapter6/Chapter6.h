@@ -44,4 +44,4 @@ const char* GetKeyState();
 void setTimer(int idx, DWORD time);
 BOOL isTimerGoal(int idx);
 //Œo‰ßŽžŠÔ‚ðŽæ“¾‚·‚é
-DWORD pgetPassedTime(int idx);
+DWORD getPassedTime(int idx);

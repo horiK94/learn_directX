@@ -34,7 +34,7 @@ BOOL isTimerGoal(int idx)
 }
 
 //経過時間を取得する
-DWORD pgetPassedTime(int idx)
+DWORD getPassedTime(int idx)
 {
 	return timeGetTime() - g_goadtimes[idx];
 }

@@ -25,6 +25,49 @@ Enemy enemys[MAXENEMY];
 
 const float INSEKI_RADIUS = 1.0f;
 
+enum { GM_MAIN, GM_OVER };
+int gameMode = GM_MAIN;
+
+
+void SetViews()
+{
+	//環境光の設定
+	g_pd3DDeivece->SetRenderState(D3DRS_AMBIENT, 0xfffffffff);
+
+	//ビュー設定
+	D3DXMATRIXA16 viewMatrix;
+	D3DXVECTOR3 eyeVec{ 0, 13.0f, -5.0f };
+	D3DXVECTOR3 atVec{ 0.0f, 0.0f, -1.0f };
+	D3DXVECTOR3 upVec{ 0.0f, 1.0f, 0.0f };
+	D3DXMatrixLookAtLH(&viewMatrix, &eyeVec, &atVec, &upVec);
+
+	g_pd3DDeivece->SetTransform(D3DTS_VIEW, &viewMatrix);
+
+	//プロジェクション(射影)変換
+	D3DXMATRIXA16 proMatrix;
+	D3DXMatrixPerspectiveFovLH(&proMatrix, D3DX_PI / 4, g_aspect, 1.0f, 100.0f);
+	g_pd3DDeivece->SetTransform(D3DTS_PROJECTION, &proMatrix);
+
+	//敵配列の初期化
+	ZeroMemory(&enemys, sizeof(Enemy) * MAXENEMY);
+
+	//タイマー指導
+	setTimer(0, 3000);
+}
+
+void GameOver()
+{
+	if(getPassedTime(1) > 5000)
+	{
+		gameMode = GM_MAIN;
+		mx = 0;
+		mz = -2.0f;
+		angle = 0;
+		//描画に関する初期化を行う
+		SetViews();
+	}
+}
+
 void AddComet()
 {
 	for (int i = 0; i < MAXENEMY; i++)
@@ -145,7 +188,9 @@ void GameMain()
 			if(pow(mx - enemys[i].x, 2) + pow(mz - enemys[i].z, 2) < INSEKI_RADIUS * INSEKI_RADIUS)
 			{
 				//衝突
-				enemys[i].isUsed = FALSE;
+				//enemys[i].isUsed = FALSE;
+				gameMode = GM_OVER;
+				setTimer(1, 0);
 			}
 		}
 	}
@@ -157,9 +202,15 @@ void Render()
 
 	if (SUCCEEDED(g_pd3DDeivece->BeginScene()))
 	{
-		g_pd3DDeivece->SetRenderState(D3DRS_AMBIENT, 0xffffffff);
-
-		GameMain();
+		switch (gameMode)
+		{
+		case GM_MAIN:
+			GameMain();
+			break;
+		case GM_OVER:
+			GameOver();
+			break;
+		}
 
 		//RenderModel(hjikimodel);
 		g_pd3DDeivece->EndScene();
@@ -191,32 +242,6 @@ HRESULT LoadModels()
 	}
 
 	return S_OK;
-}
-
-void SetViews()
-{
-	//環境光の設定
-	g_pd3DDeivece->SetRenderState(D3DRS_AMBIENT, 0xfffffffff);
-
-	//ビュー設定
-	D3DXMATRIXA16 viewMatrix;
-	D3DXVECTOR3 eyeVec{ 0, 13.0f, -5.0f };
-	D3DXVECTOR3 atVec{ 0.0f, 0.0f, -1.0f };
-	D3DXVECTOR3 upVec{ 0.0f, 1.0f, 0.0f };
-	D3DXMatrixLookAtLH(&viewMatrix, &eyeVec, &atVec, &upVec);
-
-	g_pd3DDeivece->SetTransform(D3DTS_VIEW, &viewMatrix);
-
-	//プロジェクション(射影)変換
-	D3DXMATRIXA16 proMatrix;
-	D3DXMatrixPerspectiveFovLH(&proMatrix, D3DX_PI / 4, g_aspect, 1.0f, 100.0f);
-	g_pd3DDeivece->SetTransform(D3DTS_PROJECTION, &proMatrix);
-
-	//敵配列の初期化
-	ZeroMemory(&enemys, sizeof(Enemy) * MAXENEMY);
-
-	//タイマー指導
-	setTimer(0, 3000);
 }
 
 INT WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR, INT)
