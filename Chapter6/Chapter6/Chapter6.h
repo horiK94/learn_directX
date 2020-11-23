@@ -41,3 +41,7 @@ HRESULT InitD3DWindow(LPCTSTR winTitle, int w, int h);
 int LoadModel(LPCTSTR fileName);
 void RenderModel(int idx);
 const char* GetKeyState();
+void setTimer(int idx, DWORD time);
+BOOL isTimerGoal(int idx);
+//Œo‰ßŽžŠÔ‚ðŽæ“¾‚·‚é
+DWORD pgetPassedTime(int idx);

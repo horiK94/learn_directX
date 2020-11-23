@@ -15,6 +15,30 @@ LPDIRECTINPUTDEVICE8 g_pDIDevice = NULL;
 
 char g_keys[256];
 
+const int MAX_TIMER = 16;
+DWORD g_goadtimes[MAX_TIMER];
+
+void setTimer(int idx, DWORD time)
+{
+	if(idx >= MAX_TIMER)
+	{
+		return;
+	}
+
+	g_goadtimes[idx] = timeGetTime() + time;
+}
+
+BOOL isTimerGoal(int idx)
+{
+	return g_goadtimes[idx] <= timeGetTime();
+}
+
+//経過時間を取得する
+DWORD pgetPassedTime(int idx)
+{
+	return timeGetTime() - g_goadtimes[idx];
+}
+
 void CleanD3D()
 {
 	for (int i = 0; i < MAX_MODEL; i++)
