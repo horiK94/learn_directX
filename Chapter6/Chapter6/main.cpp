@@ -23,6 +23,8 @@ float angleSp = 90;
 const int MAXENEMY = 50;
 Enemy enemys[MAXENEMY];
 
+const float INSEKI_RADIUS = 1.0f;
+
 void AddComet()
 {
 	for (int i = 0; i < MAXENEMY; i++)
@@ -138,6 +140,13 @@ void GameMain()
 			
 			g_pd3DDeivece->SetTransform(D3DTS_WORLD, &rotateMatrix);
 			RenderModel(hinsekimodel);
+
+			//è’ìÀîªíË
+			if(pow(mx - enemys[i].x, 2) + pow(mz - enemys[i].z, 2) < INSEKI_RADIUS * INSEKI_RADIUS)
+			{
+				//è’ìÀ
+				enemys[i].isUsed = FALSE;
+			}
 		}
 	}
 }
