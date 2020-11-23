@@ -10,6 +10,8 @@ struct Enemy
 int hjikimodel = -1;
 int hbackmodel = -1;
 int hinsekimodel = -1;
+int hbakuhatsumodel = -1;
+
 float mx = 0.0f, mz = 0.0f;
 DWORD lastTime = 0;
 float loopTime = 0;
@@ -60,7 +62,32 @@ void GameOver()
 {
 	//爆発描画のためGameMain()を呼び出す
 	GameMain();
-	if (getPassedTime(1) > 5000)
+	if(getPassedTime(1) < 2000)
+	{
+		//自機の表示
+		D3DXMATRIXA16 transMatrix, rotateMatrix, jikiScaleMatrix;
+		D3DXMatrixTranslation(&transMatrix, mx, 0.0f, mz);
+		D3DXMatrixRotationY(&rotateMatrix, D3DXToRadian(angle));
+
+		float passedTime = getPassedTime(1);
+		//最大1.4倍まで大きくなる
+		D3DXMatrixScaling(&jikiScaleMatrix, 1.0f + passedTime / 5000, 1.0f + passedTime / 5000, 1.0f + passedTime / 5000);
+		
+		jikiScaleMatrix = jikiScaleMatrix * rotateMatrix * transMatrix;
+
+		g_pd3DDeivece->SetTransform(D3DTS_WORLD, &jikiScaleMatrix);
+		RenderModel(hjikimodel);
+
+		//爆風の表示
+		D3DXMATRIXA16 bakuhatuRotateMatrix, bakuhatuScaleMatrix;
+		D3DXMatrixRotationY(&bakuhatuRotateMatrix, timeGetTime() / 1000);
+		D3DXMatrixScaling(&bakuhatuScaleMatrix, 1.0f + passedTime / 100, 1.0f + passedTime / 100, 1.0f + passedTime / 100);
+		bakuhatuScaleMatrix = bakuhatuScaleMatrix * bakuhatuRotateMatrix * transMatrix;
+
+		g_pd3DDeivece->SetTransform(D3DTS_WORLD, &bakuhatuScaleMatrix);
+		RenderModel(hbakuhatsumodel);
+	}
+	if (getPassedTime(1) > 15000)
 	{
 		gameMode = GM_MAIN;
 		mx = 0;
@@ -243,6 +270,13 @@ HRESULT LoadModels()
 	//隕石
 	hinsekimodel = LoadModel(_T("inseki.x"));
 	if (hinsekimodel == -1)
+	{
+		return E_FAIL;
+	}
+
+	//爆発
+	hbakuhatsumodel = LoadModel(_T("bakuha.x"));
+	if (hbakuhatsumodel == -1)
 	{
 		return E_FAIL;
 	}
