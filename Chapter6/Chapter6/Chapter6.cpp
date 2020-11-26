@@ -18,9 +18,52 @@ char g_keys[256];
 const int MAX_TIMER = 16;
 DWORD g_goadtimes[MAX_TIMER];
 
+const int MAX_FONT = 16;
+LPD3DXFONT g_pxFont[MAX_FONT];
+//テキスト描画用
+LPD3DXSPRITE g_pTextSprite = NULL;
+
+///ゲームフォントの作成
+int CreateGameFont(LPCTSTR _fontName, int _size, UINT _thickness)
+{
+	//空いている要素を探す
+	int idx = 0;
+	for (idx = 0; idx < MAX_FONT; idx++)
+	{
+		if (g_pxFont[idx] == NULL)
+		{
+			break;
+		}
+	}
+	if(idx >= MAX_FONT)
+	{
+		return -1;
+	}
+
+	//フォントの作成
+	HRESULT hr = D3DXCreateFont(g_pd3DDeivece,
+		-_size,
+		0,
+		_thickness,
+		1,
+		FALSE,
+		DEFAULT_CHARSET,
+		OUT_DEFAULT_PRECIS,
+		DEFAULT_QUALITY,
+		DEFAULT_PITCH | FF_DONTCARE,
+		_fontName,
+		&g_pxFont[idx]);
+
+	if(FAILED(hr))
+	{
+		return -1;
+	}
+	return idx;
+}
+
 void setTimer(int idx, DWORD time)
 {
-	if(idx >= MAX_TIMER)
+	if (idx >= MAX_TIMER)
 	{
 		return;
 	}
@@ -39,8 +82,20 @@ DWORD getPassedTime(int idx)
 	return timeGetTime() - g_goadtimes[idx];
 }
 
-void CleanD3D()
+void CleanupD3D()
 {
+	for (int i = 0; i < MAX_FONT; i++)
+	{
+		if (g_pxFont[i] != NULL)
+		{
+			g_pxFont[i]->Release();
+		}
+	}
+	if (g_pTextSprite != NULL)
+	{
+		g_pTextSprite->Release();
+	}
+
 	for (int i = 0; i < MAX_MODEL; i++)
 	{
 		if (g_models[i].used == FALSE)
@@ -96,7 +151,7 @@ LRESULT WINAPI MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_DESTROY:		//ウィンドウを閉じるとき
 		//特に問題がないことを伝えるために0
-		CleanD3D();
+		CleanupD3D();
 		PostQuitMessage(0);		//WM_QUITメッセージを送る → Windowsを通してメッセージループに渡り、WinMain関数のメッセージループを抜ける
 		return 0;
 	}
@@ -108,6 +163,8 @@ LRESULT WINAPI MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 HRESULT InitD3DWindow(LPCTSTR winTitle, int w, int h)
 {
 	ZeroMemory(&g_models, sizeof(Model) * MAX_MODEL);
+	//フォントの初期化
+	ZeroMemory(&g_pxFont, sizeof(LPD3DXFONT) * MAX_FONT);
 
 	//ウィンドウクラス作成
 	WNDCLASSEX wc = {
@@ -182,6 +239,13 @@ HRESULT InitD3DWindow(LPCTSTR winTitle, int w, int h)
 	g_pDIDevice->SetDataFormat(&c_dfDIKeyboard);
 	g_pDIDevice->SetCooperativeLevel(hwnd,
 		DISCL_FOREGROUND | DISCL_NONEXCLUSIVE);
+
+	//テキストスプライトの作成
+	if (FAILED(D3DXCreateSprite(g_pd3DDeivece, &g_pTextSprite)))
+	{
+		//失敗
+		return E_FAIL;
+	}
 
 	return S_OK;
 }

@@ -30,6 +30,8 @@ const float INSEKI_RADIUS = 1.0f;
 enum { GM_MAIN, GM_OVER };
 int gameMode = GM_MAIN;
 
+int hgoFont = -1;
+
 void GameMain();
 
 void SetViews()
@@ -62,17 +64,27 @@ void GameOver()
 {
 	//爆発描画のためGameMain()を呼び出す
 	GameMain();
-	if(getPassedTime(1) < 2000)
+	if (getPassedTime(1) < 2000)
 	{
+		float passedTime = getPassedTime(1);
+
+		//アルファブレンディング
+		//通常のレンダリングではモデルの色がそのままバックバッファのピクセルに上書きされる	
+		g_pd3DDeivece->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);		//有効に
+		g_pd3DDeivece->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_BLENDFACTOR);		// D3DRS_BLENDFACTORで設定した値を係数
+		g_pd3DDeivece->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);		// 0xfffffffffからD3DRS_BLENDFACTORで設定した値を引いた補数を係数
+
+		float a = 1.0f - passedTime / 2000;
+		g_pd3DDeivece->SetRenderState(D3DRS_BLENDFACTOR, D3DCOLOR_COLORVALUE(a, a, a, a));
+
 		//自機の表示
 		D3DXMATRIXA16 transMatrix, rotateMatrix, jikiScaleMatrix;
 		D3DXMatrixTranslation(&transMatrix, mx, 0.0f, mz);
 		D3DXMatrixRotationY(&rotateMatrix, D3DXToRadian(angle));
 
-		float passedTime = getPassedTime(1);
 		//最大1.4倍まで大きくなる
 		D3DXMatrixScaling(&jikiScaleMatrix, 1.0f + passedTime / 5000, 1.0f + passedTime / 5000, 1.0f + passedTime / 5000);
-		
+
 		jikiScaleMatrix = jikiScaleMatrix * rotateMatrix * transMatrix;
 
 		g_pd3DDeivece->SetTransform(D3DTS_WORLD, &jikiScaleMatrix);
@@ -86,6 +98,16 @@ void GameOver()
 
 		g_pd3DDeivece->SetTransform(D3DTS_WORLD, &bakuhatuScaleMatrix);
 		RenderModel(hbakuhatsumodel);
+
+		g_pd3DDeivece->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);		//無効に
+	}
+	if (getPassedTime(1) > 3000)
+	{
+		RECT rc = { 0, 160, 640, 260 };
+		//Spriteの描画
+		g_pTextSprite->Begin(D3DXSPRITE_ALPHABLEND | D3DXSPRITE_SORT_TEXTURE);
+		g_pxFont[hgoFont]->DrawTextW(g_pTextSprite, _T("GAME OVER"), -1, &rc, DT_CENTER | DT_VCENTER, D3DCOLOR_COLORVALUE(1.0f, 0.0f, 0.0f, 1.0f));
+		g_pTextSprite->End();
 	}
 	if (getPassedTime(1) > 15000)
 	{
@@ -277,6 +299,13 @@ HRESULT LoadModels()
 	//爆発
 	hbakuhatsumodel = LoadModel(_T("bakuha.x"));
 	if (hbakuhatsumodel == -1)
+	{
+		return E_FAIL;
+	}
+
+	//fontのロード
+	hgoFont = CreateGameFont(_T("ARIAL"), 60, FW_BOLD);
+	if (hgoFont == -1)
 	{
 		return E_FAIL;
 	}

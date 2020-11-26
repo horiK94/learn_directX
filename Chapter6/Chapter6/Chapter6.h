@@ -36,6 +36,10 @@ extern float g_aspect;
 
 extern Model g_models[];
 
+extern LPD3DXFONT g_pxFont[];
+//テキスト描画用
+extern LPD3DXSPRITE g_pTextSprite;
+
 //関数プロトタイプ宣言
 HRESULT InitD3DWindow(LPCTSTR winTitle, int w, int h);
 int LoadModel(LPCTSTR fileName);
@@ -45,3 +49,4 @@ void setTimer(int idx, DWORD time);
 BOOL isTimerGoal(int idx);
 //経過時間を取得する
 DWORD getPassedTime(int idx);
+int CreateGameFont(LPCTSTR _fontName, int _size, UINT _thickness);
