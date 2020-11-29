@@ -103,9 +103,12 @@ void GameOver()
 	}
 	if (getPassedTime(1) > 3000)
 	{
-		RECT rc = { 0, 160, 640, 260 };
+		RECT rc = { 2, 162, 642, 262 };
 		//Sprite‚Ì•`‰æ
 		g_pTextSprite->Begin(D3DXSPRITE_ALPHABLEND | D3DXSPRITE_SORT_TEXTURE);
+		g_pxFont[hgoFont]->DrawTextW(g_pTextSprite, _T("GAME OVER"), -1, &rc, DT_CENTER | DT_VCENTER, D3DCOLOR_COLORVALUE(0.0f, 1.0f, 1.0f, 1.0f));
+
+		SetRect(&rc, 0, 160, 640, 260);
 		g_pxFont[hgoFont]->DrawTextW(g_pTextSprite, _T("GAME OVER"), -1, &rc, DT_CENTER | DT_VCENTER, D3DCOLOR_COLORVALUE(1.0f, 0.0f, 0.0f, 1.0f));
 		g_pTextSprite->End();
 	}
@@ -309,6 +312,9 @@ HRESULT LoadModels()
 	{
 		return E_FAIL;
 	}
+
+	g_pxFont[hgoFont]->PreloadText(_T("GAMEOVER"), 8);
+	//g_pxFont[hgoFont]->PreloadCharacters(_T('A'), _T('Z'));
 
 	return S_OK;
 }

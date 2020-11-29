@@ -58,6 +58,7 @@ int CreateGameFont(LPCTSTR _fontName, int _size, UINT _thickness)
 	{
 		return -1;
 	}
+
 	return idx;
 }
 
