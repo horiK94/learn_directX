@@ -1,5 +1,5 @@
 #include "main.h"
-#include  "Chapter7.h"
+#include "Chapter7.h"
 
 struct Enemy
 {
@@ -50,7 +50,7 @@ void GameMain()
 	D3DXVECTOR3 myVec(0.0f, 0.0f, 0.0f);
 
 	const char* keys = GetKeyState();
-	if(keys != NULL)
+	if (keys != NULL)
 	{
 		if (keys[DIK_UP] & 0x80)
 		{
@@ -70,16 +70,16 @@ void GameMain()
 			myAngle.y += moveSpeed * loopTime;
 		}
 
-		if(myAngle.y < 0)
+		if (myAngle.y < 0)
 		{
 			myAngle.y += D3DX_PI * 2;
 		}
-		else if(myAngle.y >= D3DX_PI * 2)
+		else if (myAngle.y >= D3DX_PI * 2)
 		{
 			myAngle.y -= D3DX_PI * 2;
 		}
 	}
-	
+
 	//自キャラの表示
 	D3DXMATRIXA16 matWorld1, matWorld2;
 	D3DXMatrixRotationY(&matWorld2, myAngle.y);
@@ -90,7 +90,7 @@ void GameMain()
 
 	//ワールド変換
 	D3DXMatrixTranslation(&matWorld1, myPos.x, myPos.y, myPos.z);
-	D3DXMATRIXA16 matWorld3 =  matWorld2 * matWorld1;
+	D3DXMATRIXA16 matWorld3 = matWorld2 * matWorld1;
 
 	g_pd3DDeivece->SetTransform(D3DTS_WORLD, &matWorld3);
 	RenderModel(hjikimodel);
@@ -105,12 +105,21 @@ void GameMain()
 	//原点をもとに回転した場合の向き先を求める
 	D3DXVec3TransformCoord(&viewVecLook, &viewVecLook, &matWorld2);
 	D3DXVECTOR3 lookVec(viewVecLook.x + myPos.x, viewVecLook.y + myPos.y, viewVecLook.z + myPos.z);
-	
+
 	D3DXVECTOR3 upVec{ 0.0f, 1.0f, 0.0f };
 	D3DXMATRIXA16 cameraMatrix;
 	D3DXMatrixLookAtLH(&cameraMatrix, &eyeVec, &lookVec, &upVec);
 
 	g_pd3DDeivece->SetTransform(D3DTS_VIEW, &cameraMatrix);
+
+	//壁の描画
+	for (int i = 0; i < MAX_BUILDING; i++)
+	{
+		D3DXMatrixTranslation(&matWorld1, buildings[i].pos.x, buildings[i].pos.y, buildings[i].pos.z);
+		g_pd3DDeivece->SetTransform(D3DTS_WORLD, &matWorld1);
+
+		RenderModel(buildings[i].hmodel);
+	}
 }
 
 void Render()
@@ -133,7 +142,17 @@ HRESULT LoadModels()
 	{
 		return E_FAIL;
 	}
-	
+
+	for (int i = 0; i < MAX_BUILDING; i++)
+	{
+		int h = LoadModel(buildings[i].xname);
+		if (h == -1)
+		{
+			return E_FAIL;
+		}
+		buildings[i].hmodel = h;
+	}
+
 	return S_OK;
 }
 
