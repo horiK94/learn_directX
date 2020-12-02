@@ -30,19 +30,28 @@ void GameMain();
 
 void SetViews()
 {
+	D3DLIGHT9 light;
+	ZeroMemory(&light, sizeof(D3DLIGHT9));
+	light.Type = D3DLIGHT_DIRECTIONAL;
+	light.Diffuse.r = 1.0f;
+	light.Diffuse.g = 0.5f;
+	light.Diffuse.b = 0.0f;
+
+	D3DXVECTOR3 dirVec = D3DXVECTOR3(2, 2, -2);
+	D3DXVec3Normalize((D3DXVECTOR3*)&light.Direction, &dirVec);
+	light.Range = 1000.0f;
+	
+	g_pd3DDeivece->SetLight(0, &light);
+	g_pd3DDeivece->LightEnable(0, TRUE);
+	g_pd3DDeivece->SetRenderState(D3DRS_LIGHTING, TRUE);
+
 	//環境光の設定
-	g_pd3DDeivece->SetRenderState(D3DRS_AMBIENT, 0xfffffffff);
+	g_pd3DDeivece->SetRenderState(D3DRS_AMBIENT, D3DCOLOR_COLORVALUE(0.5f, 0.3f, 0.33f, 1.0f));
 
 	//プロジェクション(射影)変換
 	D3DXMATRIXA16 proMatrix;
 	D3DXMatrixPerspectiveFovLH(&proMatrix, D3DX_PI / 4, g_aspect, 1.0f, 100.0f);
 	g_pd3DDeivece->SetTransform(D3DTS_PROJECTION, &proMatrix);
-
-	//敵配列の初期化
-	ZeroMemory(&enemys, sizeof(Enemy) * MAXENEMY);
-
-	//タイマー指導
-	setTimer(0, 3000);
 }
 
 void GameMain()
