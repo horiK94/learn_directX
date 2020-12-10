@@ -19,8 +19,7 @@ float angle = 0;
 //角速度
 float angleSp = 90;
 
-const int MAXENEMY = 50;
-Enemy enemys[MAXENEMY];
+const float SENKAN_SIZE = 1.0f;
 
 D3DXVECTOR3 myPos(0.0f, 0.0f, 0.0f);
 D3DXVECTOR3 myAngle(0.0f, 0.f, 0.0f);
@@ -40,7 +39,7 @@ void SetViews()
 	D3DXVECTOR3 dirVec = D3DXVECTOR3(2, 2, -2);
 	D3DXVec3Normalize((D3DXVECTOR3*)&light.Direction, &dirVec);
 	light.Range = 1000.0f;
-	
+
 	g_pd3DDeivece->SetLight(0, &light);
 	g_pd3DDeivece->LightEnable(0, TRUE);
 	g_pd3DDeivece->SetRenderState(D3DRS_LIGHTING, TRUE);
@@ -52,6 +51,49 @@ void SetViews()
 	D3DXMATRIXA16 proMatrix;
 	D3DXMatrixPerspectiveFovLH(&proMatrix, D3DX_PI / 4, g_aspect, 1.0f, 100.0f);
 	g_pd3DDeivece->SetTransform(D3DTS_PROJECTION, &proMatrix);
+}
+
+BOOL hitTikei(D3DXVECTOR3* pMinA, D3DXVECTOR3* pMaxA)
+{
+	for (int i = 0; i < MAX_BUILDING; i++)
+	{
+		D3DXVECTOR3* pMinB, * pMaxB;
+		pMinB = &boundingBoxes[i].minVec;
+		pMaxB = &boundingBoxes[i].maxVec;
+
+		if (pMinA->x > pMaxB->x)
+		{
+			continue;
+		}
+
+		if (pMaxA->x < pMinB->x)
+		{
+			continue;
+		}
+
+		if (pMinA->y > pMaxB->y)
+		{
+			continue;
+		}
+
+		if (pMaxA->y < pMinB->y)
+		{
+			continue;
+		}
+
+		if (pMinA->z > pMaxB->z)
+		{
+			continue;
+		}
+
+		if (pMaxA->z < pMinB->z)
+		{
+			continue;
+		}
+
+		return TRUE;
+	}
+	return FALSE;
 }
 
 void GameMain()
@@ -95,7 +137,15 @@ void GameMain()
 
 	D3DXVECTOR3 myVec2;
 	D3DXVec3TransformCoord(&myVec2, &myVec, &matWorld2);
-	myPos += myVec2;
+
+	//地形にぶつかる等で進めない場合は位置を足さない
+	D3DXVECTOR3 willMovePos = myPos + myVec2;
+	D3DXVECTOR3 pMinA (willMovePos.x - SENKAN_SIZE / 2.0f, willMovePos.y - SENKAN_SIZE / 2.0f, willMovePos.z - SENKAN_SIZE / 2.0f);
+	D3DXVECTOR3 pMaxA (willMovePos.x + SENKAN_SIZE / 2.0f, willMovePos.y + SENKAN_SIZE / 2.0f, willMovePos.z + SENKAN_SIZE / 2.0f);
+	if (!hitTikei(&pMinA, &pMaxA))
+	{
+		myPos = willMovePos;
+	}
 
 	//ワールド変換
 	D3DXMatrixTranslation(&matWorld1, myPos.x, myPos.y, myPos.z);
@@ -160,6 +210,43 @@ HRESULT LoadModels()
 			return E_FAIL;
 		}
 		buildings[i].hmodel = h;
+
+		//境界ボックスの作成
+		//頂点数の取得
+		DWORD numVector = g_models[h].pMesh->GetNumVertices();
+		//頂点データ間のバイト数
+		DWORD vertexSize = D3DXGetFVFVertexSize(g_models[h].pMesh->GetFVF());
+
+		//頂点バッファ
+		LPDIRECT3DVERTEXBUFFER9 pvb;
+		HRESULT result = g_models[h].pMesh->GetVertexBuffer(&pvb);
+
+		if (FAILED(result))
+		{
+			return E_FAIL;
+		}
+
+		//頂点バッファをLockメソッドでロックすると、頂点データのアドレスが取得できる
+		BYTE* pvetices;
+		result = pvb->Lock(0, 0, (VOID**)&pvetices, 0);
+		if (FAILED(result))
+		{
+			return E_FAIL;
+		}
+
+		//バウンディングボックスの取得
+		D3DXVECTOR3 boundingMinVec, boundingMaxVec;
+		result = D3DXComputeBoundingBox((D3DXVECTOR3*)pvetices, numVector, vertexSize, &boundingMinVec, &boundingMaxVec);
+		if (FAILED(result))
+		{
+			return E_FAIL;
+		}
+
+		//オブジェクト座標からワールド座標時(回転はしていないのでそのままワールド座標を足している)
+		boundingBoxes[i].minVec = buildings[i].pos + boundingMinVec;
+		boundingBoxes[i].maxVec = buildings[i].pos + boundingMaxVec;
+		//頂点バッファのアンロック
+		pvb->Unlock();
 	}
 
 	return S_OK;

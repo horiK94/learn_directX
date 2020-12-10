@@ -8,8 +8,15 @@ struct Building
 	int hmodel;
 };
 
+struct BoundingBox
+{
+	D3DXVECTOR3 minVec;
+	D3DXVECTOR3 maxVec;
+};
+
 const int MAX_BUILDING = 20;
 
+BoundingBox boundingBoxes[MAX_BUILDING];
 Building buildings[MAX_BUILDING] =
 {
 	{ _T("floor1.x"), D3DXVECTOR3(-6, 0,  6), -1},
