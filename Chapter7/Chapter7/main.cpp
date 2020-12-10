@@ -21,7 +21,7 @@ float angleSp = 90;
 
 const float SENKAN_SIZE = 1.0f;
 
-D3DXVECTOR3 myPos(0.0f, 0.0f, 0.0f);
+D3DXVECTOR3 myPos(0.0f, 1.0f, 0.0f);
 D3DXVECTOR3 myAngle(0.0f, 0.f, 0.0f);
 float angleSpeed = D3DX_PI / 2;
 
