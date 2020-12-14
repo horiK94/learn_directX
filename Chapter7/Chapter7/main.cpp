@@ -14,6 +14,8 @@ DWORD lastTime = 0;
 float loopTime = 0;
 float moveSpeed = 5.0f;
 
+int font_id = -1;
+
 //角度
 float angle = 0;
 //角速度
@@ -92,6 +94,24 @@ BOOL ProbeJiki(float* pFoundagley)
 
 		if (D3DXBoxBoundProbe(&mMin, &mMax, &tekiPos, &probeVec))
 		{
+			D3DXVECTOR3 disVec = tekiPos - myPos;
+			float distance = D3DXVec3LengthSq(&disVec);
+
+			//地形との当たり判定チェック
+			for (int j = 0; j < MAX_BUILDING; j++)
+			{
+				D3DXVECTOR3 totiMin = boundingBoxes[j].minVec;
+				D3DXVECTOR3 totiMax = boundingBoxes[j].maxVec;
+				if (D3DXBoxBoundProbe(&totiMin, &totiMax, &tekiPos, &probeVec))
+				{
+					D3DXVECTOR3 totiVec = buildings[j].pos - tekiPos;
+					if (distance > D3DXVec3LengthSq(&totiVec))
+					{
+						return FALSE;
+					}
+				}
+			}
+
 			*pFoundagley = tekiAngle + D3DX_PI / 40.0f * i;
 			return TRUE;
 		}
@@ -137,7 +157,46 @@ void MoveTeki()
 		}
 		break;
 		case TK_CHASE:
-			break;
+		{
+			float foundAngle;
+			if (ProbeJiki(&foundAngle))
+			{
+				if (foundAngle < tekiAngle)
+				{
+					//現在向いている角度より左で見つけた
+					searchTurn = -1;
+				}
+				else
+				{
+					searchTurn = 1;
+				}
+				tekiAngle += searchTurn * angleSp * loopTime;
+
+				if (fabs(foundAngle - tekiAngle) < D3DX_PI / 12)
+				{
+					//見ている方向と30度差しかない場合は追ってくる
+					D3DXVECTOR3 forwardLocal = D3DXVECTOR3(0, 0, 1.0f);
+					D3DXMATRIXA16 rotateMatrix;
+					D3DXMatrixRotationY(&rotateMatrix, tekiAngle);
+
+					D3DXVECTOR3 forwardWorld;
+					D3DXVec3TransformCoord(&forwardWorld, &forwardLocal, &rotateMatrix);
+
+					tekiPos += forwardWorld * tekiSpeed * loopTime;
+				}
+			}
+			else
+			{
+				//見失った
+
+				//ここで中心となる角度を現在の敵の向いている角度にする.
+				//設定し忘れた場合searchPivotによってはfabs()がtrueになり、向きが変わってもtrueになり...となって、静止したように見えてしまうので注意
+				searchPivot = tekiAngle;
+				searchTurn = -1;
+				tekiMode = TK_SEARCH;
+			}
+		}
+		break;
 		}
 	}
 	if (passedTime >= 90000)
@@ -183,6 +242,23 @@ void MoveTeki()
 		RenderModel(hteki1model);
 
 		g_pd3DDeivece->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+	}
+
+	D3DXVECTOR3 disVec = tekiPos - myPos;
+	if (D3DXVec3LengthSq(&disVec) < 1)
+	{
+		RECT rect = { 0, 160, 640, 240 };
+		g_pTextSprite->Begin(D3DXSPRITE_ALPHABLEND | D3DXSPRITE_SORT_TEXTURE);
+		
+		if(passedTime <= 90000)
+		{
+			g_pxFont[font_id]->DrawTextW(g_pTextSprite, _T("つかまった！"), -1, &rect, DT_CENTER | DT_VCENTER, D3DCOLOR_COLORVALUE(1.0f, 1.0f, 1.0f, 1.0f));
+		}
+		else
+		{
+			g_pxFont[font_id]->DrawTextW(g_pTextSprite, _T("つかまえた！"), -1, &rect, DT_CENTER | DT_VCENTER, D3DCOLOR_COLORVALUE(1.0f, 1.0f, 1.0f, 1.0f));
+		}
+		g_pTextSprite->End();
 	}
 }
 
@@ -395,6 +471,14 @@ HRESULT LoadModels()
 		//頂点バッファのアンロック
 		pvb->Unlock();
 	}
+
+	//文字の用意
+	font_id = CreateGameFont(_T("MS　ゴシック"), 60, FW_BOLD);
+	if (font_id == -1)
+	{
+		return E_FAIL;
+	}
+	g_pxFont[font_id]->PreloadText(_T("つかまえった！"), 7);
 
 	return S_OK;
 }
