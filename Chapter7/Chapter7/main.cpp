@@ -17,13 +17,29 @@ float moveSpeed = 5.0f;
 //角度
 float angle = 0;
 //角速度
-float angleSp = 90;
+float angleSp = D3DX_PI / 2;		//90度/s
 
 const float SENKAN_SIZE = 1.0f;
 
 D3DXVECTOR3 myPos(0.0f, 1.0f, 0.0f);
 D3DXVECTOR3 myAngle(0.0f, 0.f, 0.0f);
 float angleSpeed = D3DX_PI / 2;
+
+//敵データ
+int hteki1model, hteki2model;
+D3DXVECTOR3 tekiPos(-2.0f, 1.0f, -2.0f);
+float tekiSpeed = 3.0f;
+float tekiAngle = 0.0f;
+
+enum
+{
+	TK_CHASE,
+	TK_SEARCH,
+};
+
+int tekiMode = TK_SEARCH;
+float searchPivot = 0.0f;		//自キャラが見つからないときの中心角度
+int searchTurn = 1;		//1: 時計回り, -1: 反時計回り(自キャラが見つからないときの見回り向き)
 
 void GameMain();
 
@@ -51,6 +67,123 @@ void SetViews()
 	D3DXMATRIXA16 proMatrix;
 	D3DXMatrixPerspectiveFovLH(&proMatrix, D3DX_PI / 4, g_aspect, 1.0f, 100.0f);
 	g_pd3DDeivece->SetTransform(D3DTS_PROJECTION, &proMatrix);
+
+	//敵始動
+	setTimer(2, 0);
+}
+
+//時期の衝突判定
+//pFoundagley: あたった場合、あたった角度を返す
+BOOL ProbeJiki(float* pFoundagley)
+{
+	//自キャラの境界ボックス作成
+	D3DXVECTOR3 mMin = D3DXVECTOR3(myPos.x - SENKAN_SIZE / 2, myPos.y - SENKAN_SIZE / 2, myPos.z - SENKAN_SIZE / 2);
+	D3DXVECTOR3 mMax = D3DXVECTOR3(myPos.x + SENKAN_SIZE / 2, myPos.y + SENKAN_SIZE / 2, myPos.z + SENKAN_SIZE / 2);
+
+	D3DXVECTOR3 probeVecBase = D3DXVECTOR3(0, 0, 1.0);
+
+	//45度の視野を4.5度単位で探索
+	for (int i = -5; i < 6; i++)
+	{
+		D3DXVECTOR3 probeVec;
+		D3DXMATRIXA16 rotateMatrix;
+		D3DXMatrixRotationY(&rotateMatrix, tekiAngle + D3DX_PI / 40.0f * i);
+		D3DXVec3TransformCoord(&probeVec, &probeVecBase, &rotateMatrix);
+
+		if (D3DXBoxBoundProbe(&mMin, &mMax, &tekiPos, &probeVec))
+		{
+			*pFoundagley = tekiAngle + D3DX_PI / 40.0f * i;
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+void MoveTeki()
+{
+	//ワールド変換行列作成
+	D3DXMATRIXA16 matWorld1, matWorld2, matWorld3;
+	D3DXMatrixTranslation(&matWorld1, tekiPos.x, 1.6f, tekiPos.z);
+	D3DXMatrixRotationY(&matWorld2, tekiAngle);
+	matWorld3 = matWorld2 * matWorld1;
+
+	g_pd3DDeivece->SetTransform(D3DTS_WORLD, &matWorld3);
+
+	DWORD passedTime = getPassedTime(2);
+	if (passedTime < 90000)
+	{
+		//攻撃モード
+		RenderModel(hteki1model);
+
+		switch (tekiMode)
+		{
+		case TK_SEARCH:
+		{
+			//loopTimeに応じた角速度分の角度変更
+			tekiAngle += searchTurn * angleSp * loopTime;
+			if (fabs(tekiAngle - searchPivot) > D3DX_PI / 1.5f)
+			{
+				//120度見たら向きを変えて240度。そしたら向きを変えて240度...となるように動くため、
+				//fabs(絶対値関数)が120度(=2/3πラジアン)を超えたら向きを変える
+				searchTurn *= -1;
+			}
+			float jikiAngle;
+			if (ProbeJiki(&jikiAngle))
+			{
+				//見つけた
+				tekiMode = TK_CHASE;
+			}
+		}
+		break;
+		case TK_CHASE:
+			break;
+		}
+	}
+	if (passedTime >= 90000)
+	{
+		//攻撃モードより見た目小さいため、y座標を低く設定する
+		D3DXMatrixTranslation(&matWorld1, tekiPos.x, 1.0f, tekiPos.z);
+		matWorld2 *= matWorld1;
+		g_pd3DDeivece->SetTransform(D3DTS_WORLD, &matWorld2);
+
+		//弱体モード
+		RenderModel(hteki2model);
+	}
+	if (passedTime >= 110000)
+	{
+		setTimer(2, 0);
+	}
+
+	//変身
+	if (passedTime >= 90000 && passedTime < 95000)
+	{
+		g_pd3DDeivece->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+
+		float alpha = 1 - (passedTime - 90000) / 5000.0f;
+		g_pd3DDeivece->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVBLENDFACTOR);
+		g_pd3DDeivece->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_BLENDFACTOR);
+		g_pd3DDeivece->SetRenderState(D3DRS_BLENDFACTOR, D3DCOLOR_COLORVALUE(alpha, alpha, alpha, alpha));
+
+		g_pd3DDeivece->SetTransform(D3DTS_WORLD, &matWorld3);
+		RenderModel(hteki1model);
+
+		g_pd3DDeivece->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+	}
+	if (passedTime >= 105000)
+	{
+		g_pd3DDeivece->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+
+		float alpha = 1 - (passedTime - 105000) / 5000.0f;
+		g_pd3DDeivece->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_BLENDFACTOR);
+		g_pd3DDeivece->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_INVBLENDFACTOR);
+		g_pd3DDeivece->SetRenderState(D3DRS_BLENDFACTOR, D3DCOLOR_COLORVALUE(alpha, alpha, alpha, alpha));
+
+		g_pd3DDeivece->SetTransform(D3DTS_WORLD, &matWorld3);
+		RenderModel(hteki1model);
+
+		g_pd3DDeivece->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+	}
 }
 
 BOOL hitTikei(D3DXVECTOR3* pMinA, D3DXVECTOR3* pMaxA)
@@ -140,8 +273,8 @@ void GameMain()
 
 	//地形にぶつかる等で進めない場合は位置を足さない
 	D3DXVECTOR3 willMovePos = myPos + myVec2;
-	D3DXVECTOR3 pMinA (willMovePos.x - SENKAN_SIZE / 2.0f, willMovePos.y - SENKAN_SIZE / 2.0f, willMovePos.z - SENKAN_SIZE / 2.0f);
-	D3DXVECTOR3 pMaxA (willMovePos.x + SENKAN_SIZE / 2.0f, willMovePos.y + SENKAN_SIZE / 2.0f, willMovePos.z + SENKAN_SIZE / 2.0f);
+	D3DXVECTOR3 pMinA(willMovePos.x - SENKAN_SIZE / 2.0f, willMovePos.y - SENKAN_SIZE / 2.0f, willMovePos.z - SENKAN_SIZE / 2.0f);
+	D3DXVECTOR3 pMaxA(willMovePos.x + SENKAN_SIZE / 2.0f, willMovePos.y + SENKAN_SIZE / 2.0f, willMovePos.z + SENKAN_SIZE / 2.0f);
 	if (!hitTikei(&pMinA, &pMaxA))
 	{
 		myPos = willMovePos;
@@ -179,6 +312,8 @@ void GameMain()
 
 		RenderModel(buildings[i].hmodel);
 	}
+
+	MoveTeki();
 }
 
 void Render()
@@ -196,6 +331,18 @@ void Render()
 
 HRESULT LoadModels()
 {
+	//敵モデル読み込み
+	hteki1model = LoadModel(_T("teki1.x"));
+	if (hteki1model == -1)
+	{
+		return E_FAIL;
+	}
+	hteki2model = LoadModel(_T("teki2.x"));
+	if (hteki2model == -1)
+	{
+		return E_FAIL;
+	}
+
 	hjikimodel = LoadModel(_T("catsenkan.x"));
 	if (hjikimodel == -1)
 	{
